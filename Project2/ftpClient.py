@@ -5,6 +5,11 @@
 # that IP address. The user is then asked for a chat name. They can exchange messages until one user
 # says "bye." Then, the chat communication will end and the other user will be prompted to end the program.
 
+<<<<<<< HEAD
+=======
+import os
+import socket
+>>>>>>> f9fac2238a71940752673461ad5f8343823a7341
 import time
 import sys
 
@@ -34,23 +39,28 @@ def sendFunc():
 
         userName = raw_input("Please enter your IM Name: ") #get username
         
-        s.sendall(userName) #send username to other user
+        #s.sendall(userName) #send username to other user
 
 
         #run as long as the user does not type "Bye/bye" or received "Bye/bye"
-        while not sentBye and not isBye:
-                userInput = raw_input(userName + ": ")
-                #If user types bye, stop while loop
-                if userInput == "Bye" or userInput == "bye":                                                                                   
-                        sentBye = True
-                s.sendall(userInput) #send user message
-        
+         #if the user recieves "bye/Bye," give the option to end the program
+        while not userInput != "QUIT":
+                userInput = conn.recv(1024)
+                if userInput == "LIST":
+                        s.sendall(os.listdir())
+                if userInput == "PWD":
+                        s.sendall(os.getcwd())
+                if userInput == "RETR":
+                if userInput == "STOR":
         s.close()
         return
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> f9fac2238a71940752673461ad5f8343823a7341
 #Start the program by asking the user for an IP address
 validIP = False
 print("Welcome to GCC FTP service!\nWaiting for client commands...\n")
