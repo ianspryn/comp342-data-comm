@@ -87,7 +87,7 @@ def sendFunc():
         s.close()
         return
 
-#Server function that handles the receiving of files.
+#Server function that handles the receiving of files and messages.
 def receiveFunc():
         global isQUIT
         global isRETR
