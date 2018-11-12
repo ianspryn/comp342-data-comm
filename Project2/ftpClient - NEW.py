@@ -1,9 +1,13 @@
 # Author:  Ian Spryn, Nate Sprecher
 # Course:  COMP 342 Data Communications and Networking
-# Date:    24 October 2018
-# Description: This program takes an IP address from the user, then connects to another user with
-# that IP address. The user is then asked for a chat name. They can exchange messages until one user
-# says "bye." Then, the chat communication will end and the other user will be prompted to end the program.
+# Date:    16 November 2018
+# Description: This server is an FTP-like application that allows a client (the user) to connect and execute 5 commands
+# on the server in total:
+# PWD will print the working directory of the server.
+# LIST will print all of the items in the directory of the server
+# STOR <filename> will store a file from the client on the server's machine if it exists on the client's machine.
+# RETR <filename> will retreive a file from the server if it exists and save it to the client's machine.
+# QUIT will terminate the program
 
 import os
 import socket
@@ -12,18 +16,15 @@ import sys
 import shutil
 
 s = socket.socket()
-isQUIT = False #if sent "QUIT"
-isSTOR = False
 data = ''
 
+#variables for joining and splitting files
 kilobytes = 1024
 megabytes = kilobytes * 1000
 chunksize = int(1.4 * megabytes) 
 readsize = 1024
 
-
-
-#Client thread that manages the sending of messages. Ends when user types "bye/Bye"
+#Client thread that manages the analyzing of user input and calls appropriate methods to send/receive information
 def runClient():
         global s
         global data
@@ -33,6 +34,7 @@ def runClient():
         command = ''
         commands = ['LIST', 'RETR', 'STOR', 'PWD', 'QUIT']
 
+        #connect to server
         connected = False
         print ("Trying to connect...")
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -45,22 +47,22 @@ def runClient():
         print ("Connection successful!",ADDRESS)
 
 
-        #run as long as the user does not type "Bye/bye" or received "Bye/bye"
+        #run as long as the user does not type any variation of "QUIT"
         while not command == "QUIT":
-                data = raw_input("Command: ") #get commands from user
-                command = data.split()[0].upper()
+                data = raw_input("Command: ") #get input from user
+                command = data.split()[0].upper() #get command only from input and convert to uppercase
                 if command in commands:
                         if command == 'LIST':
                                 s.sendall(data)
-                                receiveList() #receive a list of the items in the current directory
+                                receiveList() #receive a list of the items in the current directory of the server
                         elif command == 'STOR':
-                                s.sendall(data)
                                 sendFile() #send file from client to the server
                         elif command == 'RETR':
-                                retrieveFile()
+                                s.sendall(data) #send the command and the file name
+                                retrieveFile() #retreive file from server
                         elif command == 'PWD':
                                 s.sendall(data)
-                                print(s.recv(1024))
+                                print(s.recv(1024)) #receive the directory of the server
                         else:
                                  s.sendall(data) #if this line is executed, then 'QUIT' has been sent
                 else:
@@ -68,6 +70,7 @@ def runClient():
         s.close()
         return
 
+#receive a list of the items in the current directory of the sever
 def receiveList():
         global s
         numFiles = int(s.recv(1024))
@@ -77,12 +80,13 @@ def receiveList():
                 s.sendall('ack') #continue
         return
 
+#send file from client to the server
 def sendFile():
         global s
         global data
-         #SEND SPECIFIED FILE TO OTHER COMPUTER
         fileName = data.split()[1] #get the file name from the string
-        if (os.path.isfile(fileName)): #check if file exists before sending it
+        if (os.path.isfile(fileName)): #check if file exists before sending the command
+                s.sendall(data)
                 numSplits = splitFile(fileName, 'sendDir', 1024)
                 s.sendall(str(numSplits)) #send the number of file splits
                 s.recv(1024) #wait
@@ -90,24 +94,22 @@ def sendFile():
                 parts.sort()
                 for filename in parts:
                         filepath = os.path.join('sendDir', filename)
-                        fileobj  = open(filepath, 'rb')
+                        fileobj  = open(filepath, 'rb') #open the file
                         while True:
-                                filebytes = fileobj.read(readsize)
+                                filebytes = fileobj.read(readsize) #read the data
                                 if not filebytes: break
-                                s.sendall(filebytes)
+                                s.sendall(filebytes) #send the data
                         fileobj.close()
-
-                # for i in range(numSplits):
-                #         s.sendall('part%04d' % i)
                 shutil.rmtree('sendDir') #delete the directory after sending the file
+                print('File sent!')
         else:
                 print('ERROR: File does not exist')
         return
 
+#retreive file from server
 def retrieveFile():
         global s
         global data
-        s.sendall(data) #send the command and the file name
         numSplits = s.recv(1024)
         fileName = data.split()[1] #get the file name from the previous command
         if 'ERROR' in numSplits: #if we receive 'ERROR', that means the file does not exist
@@ -127,49 +129,50 @@ def retrieveFile():
                         fileobj.close() #close the file
                 joinFile('recvDir', fileName) #merge the file chunks into one file
                 shutil.rmtree('recvDir') #delete the directory after sending the file
+                print('File received!')
         return
 
 
 #split file, store in given directory
 def splitFile(fromfile, todir, chunksize=chunksize): 
-    if not os.path.exists(todir):                  # caller handles errors
-        os.mkdir(todir)                            # make dir, read/write parts
+    if not os.path.exists(todir):
+        os.mkdir(todir) #make directory if it diesn't exist
     else:
-        for fname in os.listdir(todir):            # delete any existing files
+        for fname in os.listdir(todir): #delete any existing files
             os.remove(os.path.join(todir, fname)) 
     partnum = 0
-    input = open(fromfile, 'rb')                   # use binary mode on Windows
-    while True:                                    # eof=empty string from read
-        chunk = input.read(chunksize)              # get next part <= chunksize
+    input = open(fromfile, 'rb')
+    while True:
+        chunk = input.read(chunksize) #read the data
         if not chunk: break
         partnum  = partnum+1
         filename = os.path.join(todir, ('part%04d' % partnum))
-        fileobj  = open(filename, 'wb')
-        fileobj.write(chunk)
-        fileobj.close()                            # or simply open(  ).write(  )
+        fileobj  = open(filename, 'wb') #open file
+        fileobj.write(chunk) #write data to file
+        fileobj.close()
     input.close()
-    assert partnum <= 9999                         # join sort fails if 5 digits
+    assert partnum <= 9999 #join sort fails if 5 digits
     return partnum
 
 
 #function that joins given directory into file
 def joinFile(fromdir, tofile):
-    output = open(tofile, 'wb')
-    parts  = os.listdir(fromdir)
-    parts.sort(  )
+    output = open(tofile, 'wb') #open final file
+    parts = os.listdir(fromdir) #store list of file chunks
+    parts.sort()
     for filename in parts:
         filepath = os.path.join(fromdir, filename)
-        fileobj  = open(filepath, 'rb')
+        fileobj  = open(filepath, 'rb') #open file part
         while True:
-            filebytes = fileobj.read(readsize)
+            filebytes = fileobj.read(readsize) #read chunk
             if not filebytes: break
-            output.write(filebytes)
+            output.write(filebytes) #write to final file
         fileobj.close()
     output.close()
     return
 
 
-#Start the program by asking the user for an IP address
+#start the program by asking the user for an IP address
 validIP = False
 print("Welcome to GCC FTP client!\n")
 #check if valid IP address
@@ -179,8 +182,7 @@ while not validIP:
                 socket.inet_aton(ADDRESS) #check if legal IP address
                 validIP = True;
         except socket.error:
-                pass # Not legal IP address
+                pass #not legal IP address
 
 runClient()
-
-sys.exit()
+sys.exit() #Terminate
