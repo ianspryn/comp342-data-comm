@@ -14,7 +14,6 @@ sentBye = False #if client has sent bye
 isQuit = False #if received bye
 
 
-<<<<<<< HEAD
 #Client thread that manages the sending of messages. Ends when user types "bye/Bye"
 def sendFunc():
         global isQUIT
@@ -86,12 +85,10 @@ def receiveFunc():
         global isPWD
         global isLIST
         global data
-=======
 #Server function that handles the receiving of messages. Ends when it receives "Bye/bye" and user types "y/Yes/yes"
 def server():
         global sentBye
         global isQuit
->>>>>>> cc4f258a068aa3944a6a7abf789b98d78cd97bf0
         HOST = ''
         PORT = 9001
         userInput = ''
