@@ -57,13 +57,11 @@ def runClient():
                                 if command == 'LIST':
                                         s.sendall(data)
                                         print(s.recv(1024))
-                                        #receiveList() #receive a list of the items in the current directory of the server
                                 elif command == 'STOR':
                                         sendFile() #send file from client to the server
                                 elif command == 'RETR':
                                         s.sendall(data) #send the command and the file name
                                         receiveFile() #retreive file from server
-                                        # print("LIST",s.recv(1024))
                                 elif command == 'PWD':
                                         s.sendall(data)
                                         print(s.recv(1024)) #receive the directory of the server
@@ -77,17 +75,11 @@ def runClient():
 #receive a list of the items in the current directory of the sever
 def receiveList():
         global s
-
-        numFiles = (s.recv(1024))
-        print("VALUE OF NUMFILES", numFiles)
-        # numFiles = int(numFiles)
-
-        #numFiles = int(s.recv(1024))
-
+        numFiles = int(s.recv(1024))
         s.sendall('ack') #continue
-        # for fname in range(numFiles):
-        #         print(s.recv(1024))
-        #         s.sendall('ack') #continue
+        for fname in range(numFiles):
+                print(s.recv(1024))
+                s.sendall('ack') #continue
         return
 
 #send file from client to the server
@@ -97,11 +89,9 @@ def sendFile():
         fileName = data.split()[1] #get the file name from the string
         if (os.path.isfile(fileName)): #check if file exists before sending the command
                 s.sendall(data)
-                numSplits = int(math.ceil(float(os.stat(fileName).st_size) / 1024))
-                s.recv(1024) #wait
-                s.sendall(str(numSplits)) #send the number of file splits
-                s.recv(1024) #wait
-
+                s.recv(1024)
+                s.sendall(str(os.stat(fileName).st_size))
+                s.recv(1024)
                 input = open(fileName, 'rb')
                 while True:
                         chunk = input.read(chunksize) #read the data
@@ -117,17 +107,18 @@ def sendFile():
 def receiveFile():
         global s
         global data
-        s.sendall('ack')
-        numSplits = s.recv(1024)
-        s.sendall('ack') #continue
         fileName = data.split()[1] #get the file name from the previous command
-        if 'ERROR' in numSplits: #if we receive 'ERROR', that means the file does not exist
+        size = s.recv(1024)
+        if 'ERROR' in size: #if we receive 'ERROR', that means the file does not exist
                 print('ERROR: File does not exist')
         else:
-                numSplits = int(numSplits) #receive the number of times the file has been split
+                size = int(size)
+                s.sendall('ack') #continue
                 output = open(fileName, 'wb') #open file
-                for i in range(numSplits): #merge all file chunks into one file
+                while True: #merge all file chunks into one file
                         output.write(s.recv(1024))
+                        size -= 1024
+                        if size < 0: break
                 output.close()
                 print('File received!')
         return

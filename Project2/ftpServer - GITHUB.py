@@ -49,17 +49,10 @@ def runServer():
                         if command == 'PWD':
                                 conn.sendall(os.getcwd())
                         elif command == 'LIST':
-
                                 fileList = ''
                                 for fname in os.listdir(os.curdir):
                                         fileList += fname + '\n'
                                 conn.sendall(fileList)
-
-                                # conn.sendall(str(len(os.listdir(os.curdir)))) #send the number of items in the directory
-                                # conn.recv(1024) #wait
-                                # for fname in os.listdir(os.curdir): #send each file name
-                                #         conn.sendall(fname)
-                                #         conn.recv(1024) #wait
                         elif command == 'STOR':
                                 receiveFile() #receive file from client to server
                         elif command == 'RETR':
@@ -75,15 +68,16 @@ def runServer():
 def receiveFile():
         global data
         global conn
-        partnum = 0
         chunk = ''
         fileName = data.split()[1] #get the name of the file
-        conn.sendall('ack') #continue
-        numSplits = int(conn.recv(1024)) #receive the number of times the file has been split
-        conn.sendall('ack') #continue
+        conn.sendall('ack')
+        size = int(conn.recv(1024))
+        conn.sendall('ack')
         output = open(fileName, 'wb') #open file
-        for i in range(numSplits): #merge all file chunks into one file
+        while True: #merge all file chunks into one file
                 output.write(conn.recv(1024))
+                size -= 1024
+                if size < 0: break
         output.close()
 
 
@@ -94,9 +88,7 @@ def sendFile():
         global conn
         fileName = data.split()[1] #get the file name from the string
         if (os.path.isfile(fileName)): #check if file exists before sending it
-                numSplits = int(math.ceil(float(os.stat(fileName).st_size) / 1024))
-                conn.recv(1024) #wait
-                conn.sendall(str(numSplits)) #send the number of file splits
+                conn.sendall(str(os.stat(fileName).st_size))
                 conn.recv(1024) #wait
                 input = open(fileName, 'rb')
                 while True:
@@ -105,9 +97,7 @@ def sendFile():
                         conn.sendall(chunk)
                 input.close()
         else:
-                conn.recv(1024) #wait
                 conn.sendall('ERROR') #file does not exist
-                conn.recv(1024) #wait (for consistency with above)
         return
 
 

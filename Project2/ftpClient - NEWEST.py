@@ -120,10 +120,10 @@ def receiveFile():
         s.sendall('ack')
         numSplits = s.recv(1024)
         s.sendall('ack') #continue
-        fileName = data.split()[1] #get the file name from the previous command
         if 'ERROR' in numSplits: #if we receive 'ERROR', that means the file does not exist
                 print('ERROR: File does not exist')
         else:
+                fileName = data.split()[1] #get the file name from the previous command
                 numSplits = int(numSplits) #receive the number of times the file has been split
                 output = open(fileName, 'wb') #open file
                 for i in range(numSplits): #merge all file chunks into one file

@@ -75,7 +75,6 @@ def runServer():
 def receiveFile():
         global data
         global conn
-        partnum = 0
         chunk = ''
         fileName = data.split()[1] #get the name of the file
         conn.sendall('ack') #continue
@@ -85,6 +84,7 @@ def receiveFile():
         for i in range(numSplits): #merge all file chunks into one file
                 output.write(conn.recv(1024))
         output.close()
+        return
 
 
 
@@ -98,6 +98,7 @@ def sendFile():
                 conn.recv(1024) #wait
                 conn.sendall(str(numSplits)) #send the number of file splits
                 conn.recv(1024) #wait
+
                 input = open(fileName, 'rb')
                 while True:
                         chunk = input.read(chunksize) #read the data
