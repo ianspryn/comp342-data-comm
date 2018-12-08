@@ -15,9 +15,14 @@ import shutil
 import math
 import datetime
 
-data = ''
-conn = None
+# data = ''
+# conn = None
 
+#variables for sending content
+kilobytes = 1024
+megabytes = kilobytes * 1000
+chunksize = int(1.4 * megabytes)
+readsize = 1024 
 
 #Server function that handles the receiving of client commands and calls appropriate methods
 def runServer():
@@ -35,16 +40,20 @@ def runServer():
         conn,addr = s.accept()
 
         header = conn.recv(1024)
+        print("HEADER JUNK")
+        print(header)
         filePath = header.split()[1]
-
+        print("\n\n\nFILEPATH")
+        print(filePath)
         conn.sendall("HTTP/1.1 200 OK\n"
-        + "Date: " + str(datetime.datetime.now() + "\n")
+        + "Date: " + str(datetime.datetime.now()) + "\n"
         + "Connection: close\n\n")
 
-        if filePath == "\\":
-                sendDefaultIndex()
-        else: #else it's "/someLocation/someFile.type"
-                sendFile()
+        sendFile(conn, filePath)
+        # if filePath == "\\":
+        #         sendDefaultIndex()
+        # else: #else it's "/someLocation/someFile.type"
+        #         sendFile()
         
         s.close()
         conn.close()
@@ -54,7 +63,25 @@ def runServer():
 def sendDefaultIndex():
         return
 
-def sendFile():
+def sendFile(conn, filePath):
+        if filePath == "/": #if no filepath or filename is specified
+                filePath = "index.html"
+        if (os.path.isfile(filePath)): #check if file exists before sending it
+                # conn.sendall(str(os.stat(fileName).st_size))
+                # conn.recv(1024) #wait
+                input = open(filePath, 'rb')
+                while True:
+                        chunk = input.read(chunksize) #read the data
+                        if not chunk: break
+                        conn.sendall(chunk)
+                input.close()
+        else:
+                input = open("404.html", 'rb')
+                while True:
+                        chunk = input.read(chunksize) #read the data
+                        if not chunk: break
+                        conn.sendall(chunk)
+                input.close()
         return
 
 #Start the program by asking the user for an IP address
