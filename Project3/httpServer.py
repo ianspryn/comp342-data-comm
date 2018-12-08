@@ -13,15 +13,11 @@ import time
 import sys
 import shutil
 import math
+import datetime
 
 data = ''
-conn  = None
+conn = None
 
-#variables for joining and splitting files
-kilobytes = 1024
-megabytes = kilobytes * 1000
-chunksize = int(1.4 * megabytes)
-readsize = 1024 
 
 #Server function that handles the receiving of client commands and calls appropriate methods
 def runServer():
@@ -29,7 +25,7 @@ def runServer():
         global conn
         isQUIT = False
         data = '' #data transferred between client and server
-        HOST = ''
+        HOST = socket.gethostbyname(socket.gethostname())
         PORT = 9001
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,71 +34,31 @@ def runServer():
         s.listen(1)
         conn,addr = s.accept()
 
-        print ("Waiting for client commands...")
+        header = conn.recv(1024)
+        filePath = header.split()[1]
 
+        conn.sendall("HTTP/1.1 200 OK\n"
+        + "Date: " + str(datetime.datetime.now() + "\n")
+        + "Connection: close\n\n")
 
-        #if the user recieves "bye/Bye," give the option to end the program
-        while not isQUIT:
-                data = conn.recv(1024)
-                if data:
-                        command = data.split()[0].upper()
-                        if command == 'PWD':
-                                conn.sendall(os.getcwd())
-                        elif command == 'LIST':
-                                fileList = ''
-                                for fname in os.listdir(os.curdir):
-                                        fileList += fname + '\n'
-                                conn.sendall(fileList)
-                        elif command == 'STOR':
-                                receiveFile() #receive file from client to server
-                        elif command == 'RETR':
-                                sendFile() #send file from server to client
-                        elif command == 'QUIT':
-                                print('Connection terminated by the client...')
-                                isQUIT = True
+        if filePath == "\\":
+                sendDefaultIndex()
+        else: #else it's "/someLocation/someFile.type"
+                sendFile()
+        
         s.close()
         conn.close()
         return
 
-#receive file from client to server
-def receiveFile():
-        global data
-        global conn
-        chunk = ''
-        fileName = data.split()[1] #get the name of the file
-        conn.sendall('ack')
-        size = int(conn.recv(1024))
-        conn.sendall('ack')
-        output = open(fileName, 'wb') #open file
-        while True: #merge all file chunks into one file
-                output.write(conn.recv(1024))
-                size -= 1024
-                if size < 0: break
-        output.close()
 
-
-
-#send file from server to the client
-def sendFile():
-        global data
-        global conn
-        fileName = data.split()[1] #get the file name from the string
-        if (os.path.isfile(fileName)): #check if file exists before sending it
-                conn.sendall(str(os.stat(fileName).st_size))
-                conn.recv(1024) #wait
-                input = open(fileName, 'rb')
-                while True:
-                        chunk = input.read(chunksize) #read the data
-                        if not chunk: break
-                        conn.sendall(chunk)
-                input.close()
-        else:
-                conn.sendall('ERROR') #file does not exist
+def sendDefaultIndex():
         return
 
+def sendFile():
+        return
 
 #Start the program by asking the user for an IP address
-print("Welcome to GCC FTP service")
+print("Welcome to GCC HTTP service")
 
 runServer()
 sys.exit() #Terminate
